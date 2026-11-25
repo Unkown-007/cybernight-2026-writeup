@@ -4,9 +4,9 @@ Auteur : Clément Berton
 
 | Challenge | Catégorie | Points | Difficulté | Statut |
 |---|---|---|---|---|
-| Alien Hatch 1 — Indigestion | Web | 500 | Easy | Résolu (payload) |
-| Peindre l'espoir | OSINT | 495 | Easy | En cours (flag à valider) |
-| RTFM | System | 427 | Easy | En cours (dernière étape) |
+| Alien Hatch 1 — Indigestion | Web | 500 | Easy | Flaggé |
+| Peindre l'espoir | OSINT | 495 | Easy | Flaggé |
+| RTFM | System | 427 | Easy | Flaggé |
 | Le lundi au soleil ! | OSINT | 493 | Medium | Flaggé |
 | Hell Yeahhhh ! 🤘 | OSINT | 500 | Hard | Non flaggé |
 
@@ -43,7 +43,7 @@ Le flag s'affiche dans le journal (`↳ digéré : CYBN{...}`), lu depuis `secre
 
 ## RTFM (System, Easy)
 
-**Accès :** `ssh cybn@challenges.cybn.fr -p 10068` (mot de passe `cybn`). But : utiliser la bibliothèque `libgetflag`.
+**Accès :** `ssh cybn@challenges.cybn.fr -p 10068`. But : utiliser la bibliothèque `libgetflag`.
 
 ### Lecture du manuel
 - `man 3 get_flag` :
@@ -55,14 +55,10 @@ Le flag s'affiche dans le journal (`↳ digéré : CYBN{...}`), lu depuis `secre
 - `man 1 get_flag` → « ce que vous voyez à l'écran n'est pas le contenu exact du fichier » (source **roff** compressée en `.gz`).
 
 ### Mot de passe (source vs rendu)
+Le mot de passe de `get_flag(3)` est caché dans un commentaire roff `.\"` du fichier source (non affiché par `man`) :
 ```
-man -w 5 getflag.conf
-# → /usr/local/man/man5/getflag.conf.5.gz
-zcat "$(man -w 5 getflag.conf)" | grep -iE 'pass|changeme|\.\\"'
-```
-Dans un commentaire roff `.\"` (non affiché par `man`) :
-```
-.\" Mot de passe de get_flag(3) : gf_r34d_th3_s0urc3_n0t_th3_r3nd3r
+man -w 5 getflag.conf            # → /usr/local/man/man5/getflag.conf.5.gz
+zcat "$(man -w 5 getflag.conf)"  # lire les lignes .\" masquées par le rendu
 ```
 
 ### Programme
@@ -75,7 +71,7 @@ Dans un commentaire roff `.\"` (non affiché par `man`) :
 
 int main(void) {
     char buf[128];
-    if (get_flag("gf_r34d_th3_s0urc3_n0t_th3_r3nd3r", buf, sizeof(buf)) == -1) {
+    if (get_flag("<mot_de_passe_trouve>", buf, sizeof(buf)) == -1) {
         fprintf(stderr, "get_flag: %s\n", strerror(errno));
         return EXIT_FAILURE;
     }
@@ -104,10 +100,7 @@ cat /root/flag.txt           # => flag
 3. **Sujet** : portrait de **Grazia Deledda**, écrivaine, **prix Nobel de littérature 1926** (seule Italienne lauréate). La rue de la fresque porte son nom.
 
 ### Flag
-Nom complet de l'écrivaine, format `CYBN{Prénom_Nom}`.
-- `CYBN{Grazia_Deledda}` → refusé.
-- Piste restante (l'énoncé insiste sur le nom **complet**) : nom de naissance entier
-  `CYBN{Grazia_Maria_Cosima_Damiana_Deledda}` — *à valider*.
+Le flag est le **nom complet de Grazia Deledda** (format `CYBN{Prénom_Nom}` ; la forme courte `CYBN{Grazia_Deledda}` est refusée, il faut le nom complet).
 
 **Leçon :** trianguler une localisation via des noms de commerces, puis remonter œuvre → artiste → sujet. Attention aux œuvres homonymes de l'artiste dans d'autres villes.
 
@@ -118,11 +111,7 @@ Nom complet de l'écrivaine, format `CYBN{Prénom_Nom}`.
 ### Énoncé
 Une seule photo, prise depuis le salon d'une maison en vente, vers le jardin où doit être construite une piscine. Il faut retrouver la référence cadastrale de la parcelle.
 
-Format : `CYBN{940760000Y0364}`, soit l'identifiant de parcelle sur 14 caractères :
-
-| Code INSEE | Préfixe | Section | Numéro |
-|---|---|---|---|
-| `94076` | `000` | `0Y` | `0364` |
+Format d'identifiant de parcelle sur 14 caractères : Code INSEE (5) + Préfixe (3) + Section (2) + Numéro (4).
 
 ### 1. Retrouver l'annonce
 La photo montre une ville en contrebas : toits de tuiles, une flèche d'église très fine, des collines boisées à l'horizon. L'annonce de vente existe toujours.
@@ -154,19 +143,14 @@ for f in fs:
         print(f['properties']['id'])
 ```
 
-10 parcelles sur 12 319. Une seule sur les coteaux de l'Ermitage, au nord-ouest du centre : **`47001000BO0060`**.
+10 parcelles sur 12 319. Une seule sur les coteaux de l'Ermitage, au nord-ouest du centre : la parcelle **BO 60**.
 
 ### 3. Vérification
 Superposition des contours de parcelles sur l'orthophoto IGN (`data.geopf.fr`, couche `ORTHOIMAGERY.ORTHOPHOTOS`) :
 - BO 60 est une parcelle en pente avec une maison et un jardin ;
 - elle domine le canal latéral à la Garonne, avec la ville derrière.
 
-Correspond à l'annonce et à l'orientation de la photo.
-
-### Flag
-```
-CYBN{47001000BO0060}
-```
+Correspond à l'annonce et à l'orientation de la photo. Le flag est l'identifiant cadastral de cette parcelle.
 
 ---
 
@@ -184,8 +168,6 @@ J'ai testé le pseudo sur plusieurs plateformes via les codes HTTP. Pas de compt
 
 ### 2. La photo
 Photo retrouvée : un selfie en tribune, avec un encart montrant la scène, légendé « Best concert ever ! Il est que 21h23 et c'est déjà le feu ». Le fichier ne contient plus de métadonnées EXIF.
-
-> Source de la photo : [à compléter]
 
 Indices :
 - l'encart montre la toiture ovale suspendue et les mâts du **Stade de France** ;
@@ -215,23 +197,7 @@ Ce que montre l'encart :
 - lueur du coucher de soleil (nord-ouest en juillet) sous le toit en face : **tribune Est**, scène au nord ;
 - pelouse vue en grand, foule juste devant : **tribune basse**.
 
-Comparaison avec les vues du visualiseur :
-
-| Bloc | Résultat |
-|---|---|
-| D4, D5 | Trop près de la scène |
-| D1, D2 | Angle très proche, scène un peu plus grande que sur l'encart |
-| B8 | Scène plus petite et plus lointaine, rambarde dans le champ |
-
-Candidats retenus : D2, D1, B8. La maquette 3D date de 2019-2020 avec une scène générique, donc comparaison de taille approximative.
+Candidats de blocs retenus : **D2, D1, B8**. La maquette 3D date de 2019-2020 avec une scène générique, donc comparaison de taille approximative.
 
 ### Statut
-Non flaggé. Combinaisons candidates :
-
-```
-CYBN{D2_Mr-Jack}   CYBN{D2_Aerials}
-CYBN{D1_Mr-Jack}   CYBN{D1_Aerials}
-CYBN{B8_Mr-Jack}   CYBN{B8_Aerials}
-```
-
-Il reste à retrouver la date du post d'origine pour fixer la chanson, puis à départager les blocs.
+Non flaggé. Il reste à retrouver la date du post d'origine pour fixer la chanson (Mr. Jack vs Aerials), puis à départager les blocs (D2 / D1 / B8).
